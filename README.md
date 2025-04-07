@@ -1,3 +1,5 @@
+Repository for PADL assessment, each file is described below:
+
 padl.ipynb - Jupyter notebook containing all training code and explanations
 
 padl.pdf - PDF of the notebook after all code has been executed
