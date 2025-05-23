@@ -1,25 +1,63 @@
 import torch
+import torch.nn as nn
 
-class Encoder():
-    pass
+class Encoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.convolutions = nn.Sequential(
+            nn.Conv2d(1, 32, 4, 2, 1),  # 192x160 → 96x80
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 4, 2, 1),  # 96x80 → 48x40
+            nn.ReLU(),
+            nn.Conv2d(64, 128, 4, 2, 1),  # 48x40 → 24x20
+            nn.ReLU(),
+            nn.Conv2d(128, 256, 4, 2, 1),  # 24x20 → 12x10
+            nn.ReLU(),
+        )
+        self.fc = nn.Linear(256 * 12 * 10, 32)
 
-class Decoder():
-    pass
+    def forward(self, x):
+        x = self.convolutions(x)
+        x = x.view(x.size(0), -1)
+        return self.fc(x)
 
-encoder = Encoder()
-decoder = Decoder()
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(32, 256 * 12 * 10)
+        self.deconv = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, 4, 2, 1),  # 12x10 → 24x20
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 24x20 → 48x40
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, 4, 2, 1),  # 48x40 → 96x80
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, 4, 2, 1),  # 96x80 → 192x160
+            nn.Sigmoid(),
+        )
+
+    def forward(self, x):
+        x = self.fc(x)
+        x = x.view(x.size(0), 256, 12, 10)
+        return self.deconv(x)
 
 def encode(images):
-    encoder.load_state_dict(torch.load("encoder.pth", map_location="cpu"))
+    device = torch.device("cuda" if images.is_cuda else "cpu")
+    encoder = Encoder()
+    encoder.load_state_dict(torch.load("encoder.pth"))
+    encoder.to(device)
     encoder.eval()
-    images = images.clamp(0, 1)  # ensure proper input
+    images = images.clamp(0, 1) 
     with torch.no_grad():
         latents = encoder(images)
     return latents
 
 def decode(latents):
-    decoder.load_state_dict(torch.load("decoder.pth", map_location="cpu"))
+    device = torch.device("cuda" if latents.is_cuda else "cpu")
+    decoder = Decoder()
+    decoder.load_state_dict(torch.load("decoder.pth"))
+    decoder.to(device)
     decoder.eval()
     with torch.no_grad():
-        recon = decoder(latents)
-    return recon
+        reconstructed = decoder(latents)
+    return reconstructed
