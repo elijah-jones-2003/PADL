@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 
 class ResidualBlock(nn.Module):
     def __init__(self, size, dropout=0.1):
@@ -51,18 +52,28 @@ class WaistPredictor(nn.Module):
 def predict(measurements):
     device = torch.device("cuda" if measurements.is_cuda else "cpu")
 
+    measurements_np = measurements.cpu().numpy()
+
     # Preprocessing
+    scaler = StandardScaler()
+    measurements_np = scaler.fit_transform(measurements_np)
+
+    poly = PolynomialFeatures(degree=2, include_bias=False)
+    measurements_np = poly.fit_transform(measurements_np)
+
+    measurements_tensor = torch.tensor(measurements_np, dtype=torch.float32).to(device)
 
     # Initialize the model
-    model = WaistPredictor()
-    model = model.to(device)
+    input_size = measurements_tensor.shape[1]
+    model = WaistPredictor(input_size).to(device)
 
-    # Load the trained weights
-    model.load_state_dict(torch.load("waist_predictor.pth"))
+    # Load trained weights
+    model.load_state_dict(torch.load("models/waist_predictor.pth", map_location=device))
     model.eval()
 
     with torch.no_grad():
-        # Predict waist circumference
-        predicted_waists = model(measurements.float())
+        predicted_waists = model(measurements_tensor)
 
     return predicted_waists
+
+

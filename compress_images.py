@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+from torchvision import transforms
+from PIL import Image
+import os
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -44,10 +47,9 @@ class Decoder(nn.Module):
 def encode(images):
     device = torch.device("cuda" if images.is_cuda else "cpu")
     encoder = Encoder()
-    encoder.load_state_dict(torch.load("encoder.pth"))
+    encoder.load_state_dict(torch.load("models/autoencoder.pth")['encoder_state_dict'])
     encoder.to(device)
     encoder.eval()
-    images = images.clamp(0, 1) 
     with torch.no_grad():
         latents = encoder(images)
     return latents
@@ -55,9 +57,10 @@ def encode(images):
 def decode(latents):
     device = torch.device("cuda" if latents.is_cuda else "cpu")
     decoder = Decoder()
-    decoder.load_state_dict(torch.load("decoder.pth"))
+    decoder.load_state_dict(torch.load("models/autoencoder.pth")['decoder_state_dict'])
     decoder.to(device)
     decoder.eval()
     with torch.no_grad():
         reconstructed = decoder(latents)
     return reconstructed
+

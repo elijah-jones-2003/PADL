@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import efficientnet_b0
+from torchvision import transforms
 
 
 def predict_class(images):
@@ -17,13 +18,19 @@ def predict_class(images):
     model = model.to(device)
 
     # Load the trained weights
-    model.load_state_dict(torch.load("fashion_classifier.pth"))
+    model.load_state_dict(torch.load("models/fashion_classifier.pth", map_location=torch.device('cpu')))
     model.eval()
 
     # Define transforms for data
+    transform = transforms.Compose([
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                            std=[0.229, 0.224, 0.225])
+    ])
+    normalized_images = transform(images)
+    normalized_images = normalized_images.to(device)
 
     with torch.no_grad():
         # Predict waist circumference
-        predicted_class = model(images)
+        predicted_class = model(normalized_images)
 
     return predicted_class
